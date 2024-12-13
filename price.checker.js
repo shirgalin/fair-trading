@@ -1,7 +1,7 @@
 import {Telegraf} from "telegraf";
 import axios from "axios";
 import dotenv from "dotenv";
-dotenv.config({path: './config/api.env'});
+dotenv.config({path: './config/.env'});
 
 const BOT_TOKEN = process.env.BOT_TOKEN; 
 const bot = new Telegraf(BOT_TOKEN);

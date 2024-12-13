@@ -3,7 +3,7 @@ import QuickChart from "quickchart-js";
 import {Telegraf} from "telegraf"
 import dotenv from "dotenv";
 import { format } from 'date-fns';
-dotenv.config({path: './config/api.env'});
+dotenv.config({path: './config/.env'});
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY;
