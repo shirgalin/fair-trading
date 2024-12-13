@@ -1,49 +1,63 @@
-const { Telegraf } = require('telegraf');
-const axios = require('axios');
+import {Telegraf} from "telegraf";
+import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config({path: './config/api.env'});
 
-const BOT_TOKEN = '7678597517:AAHh2Es_t41d6xT6h-3ngqulZHzivj3q64k'; // Замените YOUR_BOT_TOKEN на ваш токен
+const BOT_TOKEN = process.env.BOT_TOKEN; 
 const bot = new Telegraf(BOT_TOKEN);
 
 // URL и заголовки для получения курса через CoinMarketCap API
 const COINMARKETCAP_URL = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest';
-const COINMARKETCAP_API_KEY = 'f87c4996-c124-455b-9b5d-4e0b1b99c56d';
+const COINMARKETCAP_API_KEY = process.env.CMC_API_KEY;
+console.log(BOT_TOKEN, COINMARKETCAP_API_KEY);
 
-// Команда /start
-bot.start((ctx) => {
-    ctx.reply(`Привет, ${ctx.from.first_name}! 👋\nНапиши мне тикер любой криптовалюты (например, BTC или ETH), и я покажу её текущий курс в USD.`);
-});
-
-// Обработчик сообщенийы
-bot.on('text', async (ctx) => {
-    const symbol = ctx.message.text.trim().toUpperCase(); // Получаем символ криптовалюты от пользователя
-
-    try {
-        const response = await axios.get(COINMARKETCAP_URL, {
-            params: {
-                symbol: symbol
-            },
-            headers: {
-                'X-CMC_PRO_API_KEY': COINMARKETCAP_API_KEY
-            }
-        });
-
-        if (response.data.data && response.data.data[symbol]) {
-            const price = response.data.data[symbol].quote.USD.price;
-            ctx.reply(`Текущий курс ${symbol}: $${price.toFixed(2)}`);
-        } else {
-            ctx.reply(`Не удалось найти информацию о валюте с символом ${symbol}. Убедитесь, что символ введён правильно.`);
-        }
-    } catch (error) {
-        console.error('Ошибка получения данных из CoinMarketCap:', error);
-        ctx.reply('Не удалось получить информацию о валюте 😔. Попробуйте позже.');
+function formatPrice(value) {
+    if (value >= 1) {
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(value);
     }
-});
+    else if (value >= 0.00001) {
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 6,
+            maximumFractionDigits: 6
+        }).format(value);
+    }
+    else {
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 5,
+            maximumFractionDigits: 5
+        }).format(value);
+    }
+}
 
-// Запуск бота
-bot.launch().then(() => {
-    console.log('Бот запущен!');
-});
+export function setupPriceCommands(bot) {
+    bot.command('price', async (ctx) => {
+        const args = ctx.message.text.split(' ').slice(1);
+        if (args.length === 0) {
+            return ctx.reply('Использование: /price SYMBOL\nНапример: /price BTC');
+        }
 
-// Обработка сигналов для безопасного завершения
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+        const symbol = args[0].toUpperCase();
+
+        try {
+            const response = await axios.get(COINMARKETCAP_URL, {
+                params: { symbol: symbol },
+                headers: { 'X-CMC_PRO_API_KEY': COINMARKETCAP_API_KEY }
+            });
+
+            if (response.data.data && response.data.data[symbol]) {
+                const price = response.data.data[symbol].quote.USD.price;
+                const formattedPrice = formatPrice(price);
+                
+                ctx.reply(`Текущий курс ${symbol}: $${formattedPrice}`);
+            } else {
+                ctx.reply(`Не удалось найти информацию о валюте ${symbol}. Убедитесь, что символ введён правильно.`);
+            }
+        } catch (error) {
+            console.error('Ошибка получения данных из CoinMarketCap:', error);
+            ctx.reply('Не удалось получить информацию о валюте 😔. Попробуйте позже.');
+        }
+    });
+}
